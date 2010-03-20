@@ -1,0 +1,11 @@
+# vim ft=zsh
+
+autoload -U compinit promptinit zrecompile colors zsh/terminfo edit-command-line zkbd zmv accept-line keeper plast dt add-zsh-hook
+autoload -Uz vcs_info
+
+promptinit
+prompt wunjo #gentoo
+
+# launch autoloaded functions
+accept-line
+keeper

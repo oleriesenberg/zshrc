@@ -1,0 +1,321 @@
+# vim: ft=zsh
+
+# {{{ info about current repo status
+
+set_git_status()
+{
+    gitstatus="$(do_git status 2>/dev/null)"
+    [[ $? != 128 ]]
+}
+
+set_git_repo_info()
+{
+    local d="$(git rev-parse --git-dir 2>/dev/null)" b r a c s
+    
+    if [[ -n "${d}" ]] ; then
+        b=$(git symbolic-ref HEAD 2>/dev/null)
+        if [[ -d "${d}/rebase-apply" ]] ; then
+            b=$(<${d}/rebase-apply/head-name)
+            if [[ -f "${d}/rebase-apply/rebasing" ]] ; then
+                r="rebase"
+            elif [[ -d "${d}/rebase-apply/applying" ]] ; then
+                r="am"
+            else
+                r="am/rebase"
+            fi
+        elif [[ -d "${d}/rebase-merge" ]] ; then
+            b=$(<${d}/rebase-merge/head-name)
+            if [[ -f "${d}/rebase-merge/interactive" ]] ; then
+                r="rebase-i"
+            else
+                r="rebase-m"
+            fi
+        elif [[ -f "${d}/MERGE_HEAD" ]] ; then
+            r="merge"
+        elif [[ -f "${d}/BISECT_LOG" ]] ; then
+            r="bisect"
+            b="$b???"
+        fi
+
+        statusflag()
+        {
+            if [[ $gitstatus =~ $1 ]]; then
+                a+=$2
+            fi
+        }
+        statusflag '# Changes to be committed:' 'a'
+        statusflag '# Changed but not updated:' 'm'
+        statusflag '# Untracked files:' 'u'
+        if [[ -n "$(git stash list)" ]]; then
+            a+='s'
+        fi
+
+        b=${b#refs/heads/}
+        b=${b// }
+        [[ -n "${b}" ]] && c="$(git config "branch.${b}.remote" 2>/dev/null )"
+        s="${r:+${r}:}${b}${c:+@${c}}${a:+ ${a}}"
+    fi
+    git_branch=$b
+    git_remote=$c
+    git_repo_info=$s
+}
+
+set_git_addfiles()
+{
+    local modified untracked file
+
+    modified=$(print $gitstatus | \
+               sed '0,/to update what will be committed/d' | \
+               grep 'modified')
+    untracked=$(print $gitstatus | grep 'Untracked files')
+    if [[ -n "$modified" ]]; then
+        git_addfiles=($(print $modified | \
+                      awk '{ print $3 }'))
+        git_next_addfile=${git_addfiles[1]}
+        gaf=$git_next_addfile
+    fi
+    if [[ -n "$untracked" ]]; then
+        git_untracked=($(print $gitstatus | \
+                         sed -n '/# Untracked files:/,$p' | \
+                         sed -e '1,3d' -e '/^[^#]/d' | \
+                         awk '{ print $2 }' ))
+    fi
+}
+
+set_git_repo_root()
+{
+    ### examine the environment and PWD for git info relevance.
+    #   this boils down to existence of GIT_DIR or git rev-parse
+    #   reporting something.
+    local d
+    d=${GIT_DIR:-$PWD/.git}
+    if [[ ! -d "$d" ]]; then
+        d="$(git rev-parse --git-dir 2>/dev/null)"
+    fi
+    if [[ -d $d ]]; then
+        git_dir=$d
+        git_repo_root=${d%/.git*}
+        git_file_count="$(git ls-tree -r --name-only HEAD $PWD 2>/dev/null | wc -l)"
+    fi
+}
+
+have_git_repo()
+{
+    ### indicates if git info should be considered.
+    [[ -n $git_repo_root ]]
+}
+
+in_git_repo()
+{
+    ### check if PWD is inside the current repo.
+    #   if this is a subdir of the repo, the existence of controlled files
+    #   is crucial.
+    #   if the repo is empty, we are still considered inside, so check for
+    #   PWD, too.
+    [[ $git_repo_root == $PWD || $git_file_count -gt 0 ]]
+}
+
+set_git_info()
+{
+    unset git_dir git_owner git_info git_repo_info git_branch git_repo_root
+    unset git_remote git_addfiles git_untracked git_next_addfile gaf
+    set_git_repo_root
+    if have_git_repo; then
+        git_info=${git_suffix:+"git-$git_suffix"}
+        if in_git_repo; then
+            git_owner=$(stat -c %U $git_dir)
+            set_git_status
+            set_git_addfiles
+            set_git_repo_info
+            git_info="${git_info:-git}::$git_repo_info"
+        fi
+    fi
+}
+# }}}
+
+# {{{ git dir suffix
+_remove_git_suffix(){
+    unset GIT_WORK_TREE GIT_DIR git_suffix
+}
+
+_change_git_suffix(){
+    local suffix=$1 tree=${2:-~}
+    if [[ -d "$(pwd)/.git-$suffix" ]]; then
+        tree=$(pwd)
+    fi
+    export GIT_WORK_TREE=$tree GIT_DIR=$tree/.git-$suffix git_suffix=$suffix
+}
+
+set_git_suffix(){
+	if [[ -z $@ ]]; then
+		_remove_git_suffix
+	else
+		_change_git_suffix $@
+	fi
+}
+
+git_home_suffix_dirs()
+{
+    ### go to $GIT_HOME_BASEDIR, take actions on all suffix dirs given
+    #   in $1 or $GIT_HOME_SUFFIXES. Actions are given by 
+    #   $GIT_HOME_ACTIONS or $2 - ${$#}.
+    local basedir pushed
+    local -a suffixes actions
+
+    basedir=${GIT_HOME_BASEDIR-$HOME}
+    if [[ -z $GIT_HOME_SUFFIXES ]]; then
+        suffixes=($=1)
+        shift
+    else
+        suffixes=($=GIT_HOME_SUFFIXES)
+    fi
+    actions=(${GIT_HOME_ACTIONS-$*})
+    pushd $basedir
+    pushed="no"
+    for suf in $suffixes; do
+        if [[ ! -d ".git-$suf" ]]; then
+            print "descending into $suf..."
+            pushed="yes"
+            pushd $suf
+        fi
+        if [[ ! -d ".git" ]]; then
+            set_git_suffix $suf $PWD
+        fi
+        for a in $actions; do
+            git ${=a} >/dev/null
+        done
+        if [[ $pushed == 'yes' ]]; then
+            print 'going back...'
+            popd
+            pushed='no'
+        fi
+        set_git_suffix
+    done
+    popd
+}
+
+git_home_sync()
+{
+    GIT_HOME_ACTIONS=('add *' 'commit -am homesync' 'pull --rebase' 'push')
+    git_home_suffix_dirs $@
+}
+
+# }}}
+
+# {{{ adding
+git_add_hunks(){
+    while [[ -n "$(git --no-pager diff --name-status $1)" ]]; do
+        git add -p $1
+        if [[ -z "$2" ]]; then
+            git commit
+        fi
+    done
+}
+
+ga(){
+    git_add_hunks $git_next_addfile $@
+}
+
+gaa(){
+    for f in $git_addfiles[(r)$1*,(R)$1*]; do
+        git add -p $f 
+    done
+    git commit
+}
+
+gau(){
+    git add '*'
+}
+
+# }}}
+
+# {{{ host specific branch auto handling
+git_auto_master_rebase_topic()
+{
+    ### If $git_no_auto_master isn't set and we aren't on master, apply
+    #   the commands on master and rebase the current topic on it afterwards.
+    local topic use_master
+    topic=$git_branch
+    if [[ $topic != 'master' ]]; then
+        do_git checkout master
+        if [[ $? != 0 ]]; then
+            print "couldn\'t checkout master"
+            return 1 
+        fi
+        do_git $@
+        do_git checkout $topic
+        if [[ $? != 0 ]]; then
+            print "couldn\'t checkout $topic"
+            return 1 
+        fi
+        do_git rebase master
+    else
+        do_git $@
+    fi
+    unset git_no_auto_master
+}
+
+git_auto()
+{
+    local host
+    host=$(hostname)
+    if [[ -z $git_no_auto_master && $host == $git_branch ]]; then
+        git_auto_master_rebase_topic $@
+    else
+        do_git $@
+    fi
+}
+
+# }}}
+
+# {{{ committing 
+
+gcomm()
+{
+    git_auto commit -m "$*"
+}
+
+gcoma()
+{
+    git_auto commit -am "$*"
+}
+
+gcommt()
+{
+    git_no_auto_master='nonzero' gcomm $*
+}
+
+gcomat()
+{
+    git_no_auto_master='nonzero' gcoma $*
+}
+
+# }}}
+
+# {{{ misc
+do_git()
+{
+    if [[ $git_owner == 'root' ]]; then
+        sudo_exec git $@
+    else
+        command git $@
+    fi
+}
+
+git_set_remote()
+{
+    local remote branch
+    branch=${$(git symbolic-ref HEAD 2>/dev/null)##*/}
+    remotes=($(git remote show))
+    remote=${1:-$remotes[1]}
+    if [[ -n "$remotes" ]]; then
+        if [[ -n $remotes[(r)$remote] ]]; then
+            do_git config branch.${branch}.remote $remote
+        else
+            print 'no such remote'
+        fi
+    else
+        print 'no remotes'
+    fi
+}
+# }}}

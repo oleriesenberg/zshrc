@@ -1,0 +1,46 @@
+# vim: ft=zsh
+
+expand_aliases()
+{
+    local exp line finished
+    line=($@)
+    while [[ -z $finished ]]; do
+        exp=($aliases[$line[1]])
+        if [[ -z $exp ]]; then
+            finished='nonzero'
+        elif [[ $exp[1] == $line[1] ]]; then
+            line=(${exp} $line[2,-1])
+        else
+            line=(${exp} $line[2,-1])
+        fi
+    done
+    print $line
+}
+
+effective_command()
+{
+    local -a cmdline modifiers com com_exp args
+    local -A seen
+    local running comm
+
+    com=($*)
+    running='nonzero'
+    while [[ -n $running ]]; do
+        comm=$com[1]
+        args=($com[2,-1])
+        if [[ $comm == 'noglob' ]]; then
+            com=($args)
+        else
+            com_exp=($(expand_aliases $comm))
+            com[1]=($com_exp)
+        fi
+        if [[ $comm == $com[1] ]] || [[ -n $seen[$com[1]] ]]; then
+            unset running
+        fi
+        if [[ -n $com_exp ]]; then
+            seen[$com[1]]='nonzero'
+            com_exp=''
+        fi
+    done 
+    print $com[1]
+}

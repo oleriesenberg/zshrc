@@ -1,0 +1,22 @@
+# vim:ft=zsh
+
+fpath=(~/.zsh/functions $fpath)
+
+# make these have unique values
+typeset -U path
+typeset -U fpath
+
+typeset -A auto_escape_chars
+auto_escape_chars=(paludis '= ~ > <' 
+                   eix '='
+                   testing '= ~ < >'
+                   hardmask '= ~ < >'
+                   moomask '= ~ < >')
+
+# history {{{ 
+HISTSIZE=100000
+SAVEHIST=100000
+HISTFILE=~/.zsh/history/zsh_history 
+# }}}
+
+. ~/.shell/env

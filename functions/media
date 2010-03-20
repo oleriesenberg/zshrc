@@ -1,0 +1,78 @@
+# vim: ft=zsh
+
+new_albums()
+{
+    albums=$(ls ~m/*/*(/) -dt | head -n${1-10})
+    albums=(${(f)albums})
+    albums=(${albums#/home/media/music/})
+    print -l $albums
+}
+
+rename_episodes_with_dirname()
+{
+    ### use series/season dir structure for series name determination
+    dir=${1-$PWD}
+    dir=${dir:a}
+    season=${dir:t}
+    if [[ $season =~ 's[[:digit:]]' ]]; then
+        series=${dir:h:t}
+    fi
+    rename_episodes $dir ${2-$series}
+}
+
+album_tracks()
+{
+    ### for each of the supplied paths relative to $music_collection,
+    #   print the relative paths of all oggs and mp3s inside.
+    for a in $@; do
+        files=($music_collection/$a/*(mp3|ogg)(N))
+        if [[ -n $files ]]; then
+            print -l ${files#$music_collection/}
+        fi
+    done
+}
+
+add_albums()
+{
+    if [[ -z $playlist_dir ]]; then
+        print 'No playlist_dir set!'
+    else
+        local num=${1:-1} top=${2:-}
+        new_albums $num
+        musicperms $albums
+        mpc update $albums
+        sleep 2
+        mpc add $albums
+        pls="${top:+top}new.m3u"
+        album_tracks $albums >> $playlist_dir/$pls
+    fi
+}
+
+plasma_comic()
+{
+    ### install the comic in the current directory to .kde4
+    local comic=/tmp/${PWD:t}.comic
+    if [[ ! -f metadata.desktop ]]; then
+        print 'sure this is a comic dir?'
+        return
+    fi
+    zip -r $comic **/*(.)
+    plasmapkg -t comic -u $comic
+    kbuildsycoca4
+    rm $comic
+}
+
+vid(){ 
+    local v=$1 sub subpar subglob
+    if [[ -z $@[(r)"-sub"] && -d sub ]]; then
+        subglob="sub/${v%.*}*(N)"
+        sub=($~subglob)
+        if [[ -f $sub[1] ]]; then
+            subpar=(-sub $sub[1])
+        else
+            print 'No subs!'
+            sleep 1
+        fi
+    fi
+    mplayer -fs $@ $subpar
+}

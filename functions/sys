@@ -1,0 +1,61 @@
+# vim:ft=zsh fdm=marker
+
+# {{{ config file handling 
+
+# suffixes für positive matches
+config_suffixes=('' conf config cfg cf rc)
+# suffixes für negative matches: samples etc.
+sample_suffixes=(sample example default)
+config_exclude_dirs=(conf.d init.d pam.d paludis)
+
+# /etc dateien als root editieren
+conf(){
+    local glob cs ss files
+    cs=${(j:|:)config_suffixes}
+    ss=${(j:|:)sample_suffixes}
+    ex=${(j:|:)config_exclude_dirs}
+
+    # All files(mod (.)) in /etc that don't end in $sample_suffixes
+    # and start with $1, optionally followed by $config_suffixes, 
+    # optionally connected by '.', '_' or '-'
+    # (N) allows the glob to match nothing.
+    files=(/etc/**/${~1}((|.|_|-)(${~cs})(#c0,1))~(*(${~ss})|*(${~ex})*)(.N))
+
+    file=''
+    if (( ${#files} <= 1 )); then
+        file=$files
+    else
+        print "Found multiple matches:"
+        #print "  "${(j:\n  :)files}
+        i=1
+        for f in $files; do
+            print "  [$(( i++ ))] "$f
+        done
+        while [[ -z "$file" ]]; do
+            read input
+            file=${files[$input]}
+        done
+    fi
+
+    sudoedit_if $file || \
+	print "no match for \'$1\'"
+}
+
+# }}}
+
+mail_count_file='/tmp/tek-mailcount'
+
+### check if there are new mails on pion
+check_new_mail(){
+    local old_mail_count=0 mails mail_count
+    if [[ -f $mail_count_file ]]; then
+        old_mail_count=$(<$mail_count_file)
+    fi
+    mails=($(ssh pion 'print -l .maildir/**/new/*(N)'))
+    mail_count=$#mails
+    if [[ $mail_count > $old_mail_count ]]; then
+        ogg123 /usr/share/sounds/KDE-Im-New-Mail.ogg &>/dev/null
+    fi
+    print $mail_count >| $mail_count_file
+    print $mail_count
+}

@@ -1,0 +1,34 @@
+# functions
+alias repi='rename_episodes_with_dirname'
+
+# global
+alias -g T="| tail"
+alias -g H="| head"
+alias -g L="| less"
+alias -g G="| grep -i --color=auto"
+alias -g S="| sort -n"
+alias -g A="| awk"
+alias -g SA="| sudo tee -a"
+alias -g HE="--help"
+alias -g NE="2>&-"
+alias -g NO="&>|/dev/null"
+alias -g K="| keep"
+
+# suffix
+movie_ext=(avi wmv mpg mpeg mkv ogm mp4)
+for e ($movie_ext) alias -s $e=vid
+#alias -s avi=vid
+#alias -s wmv=vid
+#alias -s mpg=vid
+#alias -s mpeg=vid
+#alias -s mkv=vid
+alias -s exe=wine
+alias -s dvi=okular
+alias -s pdf=okular
+alias -s tar.gz=extract
+alias -s tar.bz2=extract
+alias -s rar=extract
+alias -s zip=extract
+alias -s py=python
+
+. ~/.shell/aliases

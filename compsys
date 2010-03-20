@@ -1,0 +1,73 @@
+# vim: ft=zsh
+
+fpath=(~/.zsh/functions ~/.zsh/completion $fpath)
+
+zmodload -i zsh/complist
+
+compinit
+
+# completion assignment {{{
+compdef do_git=git
+compdef git_auto=git
+# }}}
+
+# cache {{{
+zstyle ':completion:*' use-cache
+zstyle ':completion:*' cache-path ~/.zsh/cache
+# }}}
+
+# format {{{
+zstyle ':completion:*:warnings' format '%BSorry, no matches for: %d%b'
+# TODO saner color codes, less ghey colors
+zstyle ':completion:*:descriptions' \
+       format $'%{\e[0;31m%}completing %B%d%b%{\e[0m%}'
+zstyle ':completion:*:corrections' \
+       format $'%{\e[0;31m%}completing %B%d%b%{\e[0m%}(errors: %e)'
+zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS} ma=0\;42
+# }}}
+
+# don't complete user dirs on ~<tab>
+#zstyle ':completion:*:*:*:*:users' ignored-patterns '*'
+
+# ignore my username in cdablevars
+zstyle ':completion:named-directories:complete' ignored-patterns "$USER"
+
+# complete .. to ../
+zstyle ':completion:*' special-dirs ..
+
+# create a history completion widget and use it as completion context
+zle -C hist-complete complete-word _generic
+zstyle ':completion:hist-complete:*' completer _history
+
+# man menus {{{
+zstyle ':completion:*:manuals' separate-sections true
+zstyle ':completion:*:man:*' menu yes select
+zstyle ':completion:*:manuals*' insert-sections true
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' verbose yes
+# }}}
+
+# kill menus {{{
+zstyle ':completion:*:kill:*' command 'ps xf -u $USER -o pid,%cpu,tty,cputime,cmd'
+zstyle ':completion:*:kill:*' insert-ids single
+zstyle ':completion:*:*:kill:*' menu yes select
+zstyle ':completion:*:kill:*' force-list always
+# }}}
+
+# fuzzy completion {{{
+zstyle ':completion:*' completer _complete _match _approximate
+zstyle ':completion:*:match:*' original only
+zstyle ':completion:*:approximate:*' max-errors 1 numeric
+
+# exclude mv
+zstyle ':completion:*:*:mv:*' completer _complete _match
+# }}}
+
+zstyle ':completion:*:mv:*:' completer _complete _match
+# }}}
+
+# always show a menu if 3 or more matches {{{
+zstyle ':completion:*' menu select=3
+# }}}
+
+zrecompile -p ~/.zcompdump

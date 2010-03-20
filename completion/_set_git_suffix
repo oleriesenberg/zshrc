@@ -1,0 +1,5 @@
+#compdef set_git_suffix
+
+suffixes=(.git-*(:s/.git-/))
+
+_values "git dir suffixes" $suffixes

@@ -1,0 +1,10 @@
+# vim: ft=zsh
+
+# history
+setopt share_history hist_ignore_all_dups hist_expire_dups_first \
+       hist_find_no_dups hist_reduce_blanks extended_history \
+       hist_allow_clobber hist_no_store
+
+setopt multios chase_dots prompt_subst autocd cdablevars correct nobeep \
+       extended_glob completeinword prompt_subst auto_pushd no_clobber \
+       glob_complete short_loops

@@ -1,0 +1,118 @@
+# vim: ft=zsh
+
+### execute the current, or previous fi empty, line with sudo. Surround
+#   the buffer with quotes and use the -s switch on sudo if there are
+#   output redirection characters present.
+add_sudo() 
+{ 
+    local buflen=$#BUFFER
+    if [[ $buflen == 0 ]]; then
+        zle up-history
+    fi
+    if [[ -z ${BUFFER##*>##*} ]]; then
+        BUFFER="-s \"$BUFFER\"" 
+    fi
+    BUFFER="sudo $BUFFER" 
+    zle .accept-line
+}
+zle -N add_sudo
+
+### recurse on sudo, include the second arg with git
+construct_help_buffer()
+{
+    local buf=$*
+    local cmd=$buf[(w)1]
+    if [[ "$cmd" == "sudo" ]]; then
+        cmd=$(construct_help_buffer $buf[(w)2,(w)-1])
+    elif [[ "$cmd" == "git" ]] && [[ -n $buf[(w)2] ]]; then
+        cmd=$buf[(w)1,(w)2]
+    fi
+    print $cmd 
+}
+
+### push the current line on the stack and run --help on the command
+get_help() {
+    local cmd="$(construct_help_buffer $BUFFER)"
+    local pager='| less'
+    if [[ $cmd[(w)1] == 'git' ]] && [[ -n $buf[(w)2] ]]; then
+        unset pager
+    fi
+    zle push-line
+    LBUFFER="$cmd --help 2>&1 $pager"
+    zle .accept-line
+}
+zle -N get_help
+
+pop_d() 
+{ 
+    popd 
+    zle .accept-line
+}
+zle -N pop_d
+
+cd_nameddirs()
+{
+    local -a cmdline
+    local buf com
+
+    cmdline=(${(z)BUFFER})
+    com="${cmdline[1]}"
+
+    if [[ -n $com ]] && [[ -n ${nameddirs[${com%%/*}]} ]]; then
+        BUFFER="~$com"
+        alcontext='normal'
+    fi
+}
+zle -N cd_nameddirs
+
+escape_char()
+{
+    string=$1
+    shift
+    for c in $*; do
+        string=${string//$c/'\\'$c}
+    done
+    print -- $string
+}
+
+auto_escape()
+{
+    ### expand aliases and discard precommand modifiers,
+    # then check if the command to execute is in $auto_escape_chars.
+    # escape the given characters and reinsert into the buffer
+    local com chars
+    com=$(effective_command ${=BUFFER})
+    chars=$auto_escape_chars[$com]
+    if [[ -n $chars ]]; then
+        BUFFER=$(escape_char $BUFFER ${=chars})
+    fi
+}
+zle -N auto_escape
+
+zstyle ':acceptline:misc' actions cd_nameddirs
+zstyle ':acceptline:normal' actions auto_escape
+
+rationalise-dot() {
+  if [[ $LBUFFER = *.. ]]; then
+    LBUFFER+=/..
+  else
+    LBUFFER+=.
+  fi
+}
+zle -N rationalise-dot
+
+cd-container-of-last-arg()
+{
+    zle up-history
+    dir=${BUFFER[(w)-1]}
+    if [[ -f $dir ]]; then
+        dir=${dir:h}
+    fi
+    if [[ -d $dir ]]; then
+        BUFFER='pushd $dir'
+    else
+    BUFFER=''
+    fi
+    zle .accept-line
+}
+zle -N cd-container-of-last-arg

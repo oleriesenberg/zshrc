@@ -1,0 +1,6 @@
+. ~/.zsh/functions/sys
+. ~/.zsh/functions/git
+. ~/.zsh/functions/shell
+. ~/.zsh/functions/media
+
+. ~/.shell/functions/main

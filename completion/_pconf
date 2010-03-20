@@ -1,0 +1,21 @@
+#compdef pconf
+
+# complete the directories in /etc/paludis for first arg, the files
+# inside the chosen subdir for second arg
+if (( CURRENT == 2 )); then
+    local dirs
+    # strip off .conf.d and package_ for clarity
+    dirs=(/etc/paludis/*(/:fr:t:s/package_/))
+
+    _values "config file type" $dirs
+elif (( CURRENT == 3 )); then
+    local files pref dir
+    # re-add package_ for package_mask and package_unmask
+    if [[ "${words[2]}" = "mask" ]] || [[ "${words[2]}" = "unmask" ]]; then
+        pref="package_"
+    fi
+    # strip off .conf for clarity
+    files=(/etc/paludis/$pref${words[2]}{,.conf.d}/*(:r:t))
+
+    _values "config file" $files
+fi
