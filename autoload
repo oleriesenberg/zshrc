@@ -3,8 +3,11 @@
 autoload -U compinit promptinit zrecompile colors zsh/terminfo edit-command-line zkbd zmv accept-line keeper plast dt add-zsh-hook
 autoload -Uz vcs_info
 
+autoload -U predict-on
+zle -N predict-on
+
 promptinit
-prompt wunjo #gentoo
+prompt hoodow
 
 # launch autoloaded functions
 accept-line

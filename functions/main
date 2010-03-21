@@ -4,3 +4,19 @@
 . ~/.zsh/functions/media
 
 . ~/.shell/functions/main
+
+# Found in the mailinglistarchive from Zsh (IIRC ~1996)
+  selhist() {
+        emulate -L zsh
+        local TAB=$'\t';
+        (( $# < 1 )) && {
+                echo "Usage: $0 command"
+                return 1
+        };
+        cmd=(${(f)"$(grep -w $1 $HISTFILE | sort | uniq | pr -tn)"})
+        print -l $cmd | less -F
+        echo -n "enter number of desired command [1 - $(( ${#cmd[@]} - 1 ))]: "
+        local answer
+        read answer
+        print -z "${cmd[$answer]#*$TAB}"
+  }

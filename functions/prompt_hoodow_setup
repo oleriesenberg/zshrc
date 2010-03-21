@@ -1,12 +1,12 @@
-# wunjo prompt theme
+# hoodow prompt theme
 
 autoload -U zgitinit
 zgitinit
 
-prompt_wunjo_help () {
+prompt_hoodow_help () {
   cat <<'EOF'
 
-  prompt wunjo
+  prompt hoodow
 
 EOF
 }
@@ -40,7 +40,7 @@ colorword() {
 	echo "%{"$'\e['${(j:;:)s}m"%}"
 }
 
-prompt_wunjo_setup() {
+prompt_hoodow_setup() {
 	local verbose
 	if [[ $TERM == screen* ]] && [ -n "$STY" ]; then
 		verbose=
@@ -106,8 +106,8 @@ prompt_wunjo_setup() {
 	done
 	pc[reset]=$(colorword . . 00)
 
-	typeset -Ag wunjo_prompt_colors
-	wunjo_prompt_colors=(${(kv)pc})
+	typeset -Ag hoodow_prompt_colors
+	hoodow_prompt_colors=(${(kv)pc})
 
 	local p_date p_line p_rc
 
@@ -116,35 +116,14 @@ prompt_wunjo_setup() {
 	p_line="$pc[line]%y$pc[reset]"
 
 	PROMPT="%B%F{green}%n@%m%k %B%F{blue}%1~ %# %b%f%k"
-	RPROMPT="\$(prompt_wunjo_scm_status)"
+	RPROMPT="\$(prompt_hoodow_scm_status)"
 	RPROMPT+="%(?.. $pc[rc]exited %1v$pc[reset])"
 
-
-#	if [ $verbose ]; then
-#		PROMPT+="$pc[host]%m$pc[reset] "
-#	fi
-#	PROMPT+="$pc[path]%(2~.%~.%/)$pc[reset]"
-#	PROMPT+="\$(prompt_wunjo_scm_status)"
-#	PROMPT+="%(?.. $pc[rc]exited %1v$pc[reset])"
-#	PROMPT+="
-#"
-#	PROMPT+="$pc[hist]%n$pc[reset] "
-#	PROMPT+="$pc[shortpath]%1~$pc[reset]"
-#	PROMPT+="\$(prompt_wunjo_scm_branch)"
-#	PROMPT+=" $pc[#]%#$pc[reset] "
-#
-#	RPROMPT=
-#	if [ $verbose ]; then
-#		RPROMPT+="$p_date "
-#	fi
-#	RPROMPT+="$pc[reset]"
-#	RPROMPT+=" $p_line"
-
 	export PROMPT RPROMPT
-	precmd_functions+='prompt_wunjo_precmd'
+	precmd_functions+='prompt_hoodow_precmd'
 }
 
-prompt_wunjo_precmd() {
+prompt_hoodow_precmd() {
 	local ex=$?
 	psvar=()
 
@@ -156,10 +135,10 @@ prompt_wunjo_precmd() {
 	fi
 }
 
-prompt_wunjo_scm_status() {
+prompt_hoodow_scm_status() {
 	zgit_isgit || return
 	local -A pc
-	pc=(${(kv)wunjo_prompt_colors})
+	pc=(${(kv)hoodow_prompt_colors})
 
 	head=$(zgit_head)
 	gitcommit=$(revstring $head)
@@ -260,10 +239,10 @@ prompt_wunjo_scm_status() {
 	fi
 }
 
-prompt_wunjo_scm_branch() {
+prompt_hoodow_scm_branch() {
 	zgit_isgit || return
 	local -A pc
-	pc=(${(kv)wunjo_prompt_colors})
+	pc=(${(kv)hoodow_prompt_colors})
 
 	echo -n "$pc[punc]:$pc[scm_branch]$(zgit_head)"
 
@@ -293,6 +272,6 @@ prompt_wunjo_scm_branch() {
 	echo $pc[reset]
 }
 
-prompt_wunjo_setup "$@"
+prompt_hoodow_setup "$@"
 
 # vim:set ft=zsh:
